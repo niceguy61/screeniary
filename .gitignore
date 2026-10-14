@@ -1,0 +1,17 @@
+# Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+# Our artifacts
+*.zip
+packaging/stage/
+# Extracted portable builds (binaries ship via zips, not git)
+VTT-Portable-*/
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+# Secrets - never commit real keys
+.env
