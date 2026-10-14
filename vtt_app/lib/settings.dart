@@ -15,6 +15,7 @@ class Providers {
   static const openrouter = 'openrouter';
   static const anthropic = 'anthropic';
   static const bedrock = 'bedrock';
+  static const gemini = 'gemini';
 
   static const labels = {
     ollama: 'Ollama (로컬)',
@@ -22,6 +23,7 @@ class Providers {
     openrouter: 'OpenRouter',
     anthropic: 'Anthropic Claude',
     bedrock: 'AWS Bedrock',
+    gemini: 'Google Gemini',
   };
 }
 
@@ -143,6 +145,10 @@ class AppSettings {
           captionModel: 'amazon.nova-lite-v1:0',
           diaryModel: 'anthropic.claude-3-5-sonnet-20241022-v2:0',
           region: 'us-east-1',
+        ),
+        Providers.gemini: ProviderConfig(
+          captionModel: 'gemini-2.0-flash',
+          diaryModel: 'gemini-2.5-flash',
         ),
       };
 

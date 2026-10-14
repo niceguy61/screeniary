@@ -190,6 +190,75 @@ void main() {
     client.close();
   });
 
+  test('gemini request shape and text parse', () async {
+    Map<String, dynamic>? seenBody;
+    Map<String, String>? seenHeaders;
+    String? seenUrl;
+    final mock = MockClient((req) async {
+      seenUrl = req.url.toString();
+      seenHeaders = req.headers;
+      seenBody = jsonDecode(req.body) as Map<String, dynamic>;
+      return http.Response(
+        jsonEncode({
+          'candidates': [
+            {
+              'content': {
+                'parts': [
+                  {'text': 'gemini says hi'}
+                ]
+              }
+            }
+          ]
+        }),
+        200,
+      );
+    });
+    final client = LlmClient(httpClient: mock);
+    final s = _with(Providers.gemini, (c) {
+      c.apiKey = 'g-key';
+      c.captionModel = 'gemini-2.0-flash';
+    });
+    final out =
+        await client.caption(s, Uint8List.fromList([9, 9, 9]));
+    expect(out, 'gemini says hi');
+    expect(
+      seenUrl,
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+    );
+    expect(_header(seenHeaders!, 'x-goog-api-key'), 'g-key');
+    final parts = (seenBody!['contents'] as List)
+        .first['parts'] as List;
+    expect(
+      parts.any((b) =>
+          b is Map &&
+          (b['inline_data'] as Map?)?['mime_type'] == 'image/png'),
+      isTrue,
+    );
+    client.close();
+  });
+
+  test('gemini blocked prompt throws readable error', () async {
+    final mock = MockClient((req) async {
+      return http.Response(
+        jsonEncode({
+          'promptFeedback': {'blockReason': 'SAFETY'}
+        }),
+        200,
+      );
+    });
+    final client = LlmClient(httpClient: mock);
+    final s = _with(Providers.gemini, (c) {
+      c.apiKey = 'g-key';
+      c.diaryModel = 'gemini-2.5-flash';
+    });
+    expect(
+      () => client.diary(s, 'log'),
+      throwsA(predicate(
+          (Object e) => e.toString().contains('차단'))),
+    );
+    client.close();
+  });
+
   test('missing key throws a clear error without network', () async {
     var called = false;
     final mock = MockClient((req) async {

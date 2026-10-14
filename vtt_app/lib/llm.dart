@@ -185,6 +185,45 @@ String bedrockText(Map<String, dynamic> res) {
   ].join('\n').trim();
 }
 
+// ---------- Google Gemini (generateContent) ----------
+
+Map<String, dynamic> geminiBody({
+  required String prompt,
+  required List<String> imagesB64,
+}) {
+  final parts = <Map<String, dynamic>>[
+    {'text': prompt},
+  ];
+  for (final b64 in imagesB64) {
+    parts.add({
+      'inline_data': {'mime_type': 'image/png', 'data': b64},
+    });
+  }
+  return {
+    'contents': [
+      {'parts': parts},
+    ],
+    'generationConfig': {'temperature': 0.2, 'maxOutputTokens': 1000},
+  };
+}
+
+String geminiText(Map<String, dynamic> res) {
+  final cands = res['candidates'] as List<dynamic>? ?? [];
+  if (cands.isEmpty) {
+    final fb = res['promptFeedback'] as Map<String, dynamic>?;
+    throw Exception('Gemini 차단됨: ${fb?['blockReason'] ?? 'unknown'}');
+  }
+  final content =
+      (cands.first as Map<String, dynamic>)['content']
+          as Map<String, dynamic>?;
+  final parts = content?['parts'] as List<dynamic>? ?? [];
+  return [
+    for (final b in parts)
+      if (b is Map<String, dynamic> && b['text'] is String)
+        (b['text'] as String),
+  ].join('\n').trim();
+}
+
 // ---------- Unified client ----------
 
 class LlmClient {
@@ -272,6 +311,14 @@ class LlmClient {
           imagesB64: imagesB64,
           timeout: timeout,
         );
+      case Providers.gemini:
+        return _gemini(
+          cfg,
+          caption: caption,
+          prompt: prompt,
+          imagesB64: imagesB64,
+          timeout: timeout,
+        );
       default:
         throw Exception('unknown provider ${s.provider}');
     }
@@ -343,6 +390,29 @@ class LlmClient {
       timeout,
     );
     return anthropicText(jsonDecode(raw) as Map<String, dynamic>);
+  }
+
+  Future<String> _gemini(
+    ProviderConfig cfg, {
+    required bool caption,
+    required String prompt,
+    required List<String> imagesB64,
+    required Duration timeout,
+  }) async {
+    if (cfg.apiKey.isEmpty) throw Exception('API key가 비어 있음');
+    final model = caption ? cfg.captionModel : cfg.diaryModel;
+    if (model.isEmpty) throw Exception('모델명이 비어 있음');
+    final raw = await _postJson(
+      Uri.parse(
+          'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent'),
+      {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': cfg.apiKey,
+      },
+      geminiBody(prompt: prompt, imagesB64: imagesB64),
+      timeout,
+    );
+    return geminiText(jsonDecode(raw) as Map<String, dynamic>);
   }
 
   Future<String> _bedrock(

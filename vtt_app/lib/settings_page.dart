@@ -264,6 +264,15 @@ class _SettingsPageState extends State<SettingsPage> {
           _field('captionModel', '캡션 모델 (vision 지원)'),
           _field('diaryModel', '일기 모델'),
         ];
+      case Providers.gemini:
+        return [
+          const Text('Google AI Studio 키 (aistudio.google.com)',
+              style: TextStyle(fontSize: 12)),
+          const SizedBox(height: 8),
+          _field('apiKey', 'API Key', obscure: true),
+          _field('captionModel', '캡션 모델 (vision 지원)'),
+          _field('diaryModel', '일기 모델'),
+        ];
       case Providers.bedrock:
         return [
           _field('awsAccessKey', 'AWS Access Key ID'),
