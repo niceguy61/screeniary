@@ -10,7 +10,7 @@ const feedbackFormUrl =
     'https://docs.google.com/forms/d/e/1FAIpQLSe0UnqdcpDOEHKyaLU-uBZ-XGuYa3avuJEgJJ9CRfR0NSnp-Q/viewform?usp=header';
 
 /// Single source of truth for the app version (title, settings, update check).
-const appVersion = '0.5.11';
+const appVersion = '0.6.0';
 
 /// Provider ids. 'openrouter' reuses the OpenAI-compatible wire format.
 class Providers {
@@ -100,6 +100,9 @@ class AppSettings {
   /// screens added mid-capture are never included.
   List<String> selectedMonitors;
 
+  /// First-run onboarding card dismissed.
+  bool onboarded;
+
   AppSettings({
     this.provider = Providers.ollama,
     Map<String, ProviderConfig>? providers,
@@ -111,6 +114,7 @@ class AppSettings {
     this.themeMode = 'system',
     this.shotRetentionDays = 30,
     List<String>? selectedMonitors,
+    this.onboarded = false,
   })  : providers = providers ?? _defaults(),
         selectedMonitors = selectedMonitors ?? [];
 
@@ -172,6 +176,7 @@ class AppSettings {
         for (final v in (j['selectedMonitors'] as List<dynamic>? ?? []))
           if (v is String) v,
       ],
+      onboarded: j['onboarded'] as bool? ?? false,
     );
     final pj = j['providers'] as Map<String, dynamic>?;
     if (pj != null) {
@@ -198,6 +203,7 @@ class AppSettings {
         'themeMode': themeMode,
         'shotRetentionDays': shotRetentionDays,
         'selectedMonitors': selectedMonitors,
+        'onboarded': onboarded,
         'providers': {for (final e in providers.entries) e.key: e.value.toJson()},
       };
 

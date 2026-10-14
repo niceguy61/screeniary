@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -32,6 +34,7 @@ class _SettingsPageState extends State<SettingsPage> {
   List<MonitorInfo> _monitors = [];
   bool _checkingUpdate = false;
   String _updateMsg = '';
+  bool _autostart = false;
 
   TextEditingController _c(String key) =>
       _controllers.putIfAbsent(key, () => TextEditingController());
@@ -59,6 +62,43 @@ class _SettingsPageState extends State<SettingsPage> {
       final monitors = await listMonitors();
       if (mounted) setState(() => _monitors = monitors);
     } catch (_) {}
+    unawaited(_loadAutostart());
+  }
+
+  Future<void> _loadAutostart() async {
+    try {
+      launchAtStartup.setup(
+        appName: 'VTT',
+        appPath: Platform.resolvedExecutable,
+      );
+      final on = await launchAtStartup
+          .isEnabled()
+          .timeout(const Duration(seconds: 3));
+      if (mounted) setState(() => _autostart = on);
+    } catch (_) {}
+  }
+
+  Future<void> _toggleAutostart(bool v) async {
+    try {
+      launchAtStartup.setup(
+        appName: 'VTT',
+        appPath: Platform.resolvedExecutable,
+      );
+      final ok =
+          v ? await launchAtStartup.enable() : await launchAtStartup.disable();
+      if (mounted && ok) setState(() => _autostart = v);
+      if (mounted && !ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('자동 시작 설정 실패')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('자동 시작 설정 실패: $e')),
+        );
+      }
+    }
   }
 
   void _toggleMonitor(String device, bool on) {
@@ -328,6 +368,18 @@ class _SettingsPageState extends State<SettingsPage> {
           : ListView(
               padding: const EdgeInsets.all(12),
               children: [
+                const Text('일반',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 13)),
+                SwitchListTile(
+                  title: const Text('Windows 시작 시 실행',
+                      style: TextStyle(fontSize: 13)),
+                  subtitle: const Text('로그인하면 트레이에서 바로 시작',
+                      style: TextStyle(fontSize: 11)),
+                  value: _autostart,
+                  onChanged: _toggleAutostart,
+                ),
+                const Divider(height: 20),
                 const Text('LLM 제공자',
                     style:
                         TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),

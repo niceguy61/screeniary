@@ -8,6 +8,8 @@ Your screen, turned into a diary. A local-first Windows app that captures what y
 - Generates a daily diary (on demand or on schedule)
 - Per-day timelapse GIF export, diary digest view, dark theme
 - Multi-monitor aware: pick which screens to record
+- System tray residence + start-with-Windows option
+- Unified search across captures, captions, and diaries
 - LLM backends: Ollama (local) / OpenAI / OpenRouter / Claude / Bedrock
 
 ## Privacy

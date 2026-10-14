@@ -161,6 +161,60 @@ CREATE TABLE IF NOT EXISTS diary(
     return db.query('diary', orderBy: 'day DESC', limit: limit);
   }
 
+  static String _likeEscape(String q) => q
+      .replaceAll(r'\', r'\\')
+      .replaceAll('%', r'\%')
+      .replaceAll('_', r'\_');
+
+  /// Full-text-lite search over titles + captions, newest first.
+  Future<List<Map<String, Object?>>> searchEntries(
+    String q, {
+    int limit = 100,
+  }) async {
+    final db = await database;
+    return searchEntriesOn(db, q, limit: limit);
+  }
+
+  static Future<List<Map<String, Object?>>> searchEntriesOn(
+    DatabaseExecutor db,
+    String q, {
+    int limit = 100,
+  }) async {
+    final esc = _likeEscape(q);
+    return db.query(
+      'entries',
+      where: 'title LIKE ? ESCAPE \'\\\' OR caption LIKE ? '
+          'ESCAPE \'\\\'',
+      whereArgs: ['%$esc%', '%$esc%'],
+      orderBy: 'ts DESC',
+      limit: limit,
+    );
+  }
+
+  /// Search saved diaries, newest first.
+  Future<List<Map<String, Object?>>> searchDiaries(
+    String q, {
+    int limit = 60,
+  }) async {
+    final db = await database;
+    return searchDiariesOn(db, q, limit: limit);
+  }
+
+  static Future<List<Map<String, Object?>>> searchDiariesOn(
+    DatabaseExecutor db,
+    String q, {
+    int limit = 60,
+  }) async {
+    final esc = _likeEscape(q);
+    return db.query(
+      'diary',
+      where: 'content LIKE ? ESCAPE \'\\\'',
+      whereArgs: ['%$esc%'],
+      orderBy: 'day DESC',
+      limit: limit,
+    );
+  }
+
   /// Manual delete: removes rows AND their image files.
   /// (Unlike retention pruning, which keeps metadata rows.)
   Future<DeleteResult> deleteEntries(List<int> ids) async {

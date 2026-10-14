@@ -10,9 +10,11 @@ import 'db.dart';
 import 'diary_page.dart';
 import 'monitors.dart';
 import 'retention.dart';
+import 'search_page.dart';
 import 'settings.dart';
 import 'settings_page.dart';
 import 'timelapse_dialog.dart';
+import 'tray_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await _showWindowSafely();
@@ -139,12 +141,14 @@ class TimelinePage extends StatefulWidget {
 
 class _TimelinePageState extends State<TimelinePage> {
   final _svc = CaptureService();
+  TrayService? _tray;
   List<Map<String, Object?>> _rows = [];
   int _total = 0;
   final _selected = <int>{};
   String _initError = '';
   bool _ready = false;
   bool _diaryBusy = false;
+  bool _showOnboarding = false;
   Timer? _sched;
   DateTime? _lastPrune;
 
@@ -162,13 +166,40 @@ class _TimelinePageState extends State<TimelinePage> {
 
   Future<void> _init() async {
     try {
+      final settings = await AppSettings.load();
+      if (mounted) {
+        setState(() => _showOnboarding = !settings.onboarded);
+      }
       await TimelineDatabase.instance.database;
       if (mounted) setState(() => _ready = true);
       await _refresh();
       await _pruneIfDue(force: true);
+      _tray = TrayService(_svc);
+      await _tray!.init();
     } catch (e) {
       if (mounted) setState(() => _initError = '$e');
     }
+  }
+
+  Future<void> _dismissOnboarding() async {
+    try {
+      final s = await AppSettings.load();
+      s.onboarded = true;
+      await s.save();
+    } catch (_) {}
+    if (mounted) setState(() => _showOnboarding = false);
+  }
+
+  void _openSettings() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SettingsPage(
+          svc: _svc,
+          onThemeChanged: widget.onThemeChanged,
+        ),
+      ),
+    );
   }
 
   /// Deletes old screenshot files (metadata + diaries are kept).
@@ -314,6 +345,7 @@ class _TimelinePageState extends State<TimelinePage> {
   void dispose() {
     _sched?.cancel();
     _svc.removeListener(_onServiceChanged);
+    _tray?.dispose();
     _svc.dispose();
     super.dispose();
   }
@@ -496,8 +528,17 @@ class _TimelinePageState extends State<TimelinePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('VTT $appVersion · 오늘 타임라인'),
+        title: const Text('VTT 0.6.0 · 오늘 타임라인'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.search_outlined),
+            tooltip: '검색',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const SearchPage()),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.checklist_outlined),
             tooltip: '선택',
@@ -543,6 +584,52 @@ class _TimelinePageState extends State<TimelinePage> {
       ),
       body: Column(
         children: [
+          if (_showOnboarding)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start,
+                    children: [
+                      const Text('VTT 시작하기',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14)),
+                      const SizedBox(height: 6),
+                      const Text(
+                        '1. 설정에서 쓸 LLM 고르기 (Ollama면 무료·로컬)\n'
+                        '2. 연결 테스트로 확인\n'
+                        '3. 아래 빨간 녹화 버튼 누르기',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment:
+                            MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: _dismissOnboarding,
+                            child:
+                                const Text('다시 보지 않기'),
+                          ),
+                          const SizedBox(width: 8),
+                          FilledButton(
+                            onPressed: () {
+                              _dismissOnboarding();
+                              _openSettings();
+                            },
+                            child: const Text('설정 열기'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
             child: Card(
