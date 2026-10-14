@@ -497,7 +497,7 @@ class _TimelinePageState extends State<TimelinePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('VTT 0.5.8 · 오늘 타임라인'),
+        title: const Text('VTT 0.5.9 · 오늘 타임라인'),
         actions: [
           IconButton(
             icon: const Icon(Icons.checklist_outlined),

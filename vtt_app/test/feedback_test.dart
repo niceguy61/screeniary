@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vtt_app/capture_service.dart';
+import 'package:vtt_app/settings.dart';
 import 'package:vtt_app/settings_page.dart';
 
 void main() {
@@ -27,7 +28,7 @@ void main() {
         .setMockMethodCallHandler(channel, null);
   });
 
-  testWidgets('feedback button shows coming-soon without URL',
+  testWidgets('feedback button exists and url is configured',
       (WidgetTester tester) async {
     final svc = CaptureService();
     await tester.runAsync(() async {
@@ -51,10 +52,11 @@ void main() {
           )
           .first,
     );
+    // Button exists (tapping would open a real browser, so don't tap).
     expect(find.text('피드백 보내기'), findsOneWidget);
-    await tester.tap(find.text('피드백 보내기'));
-    await tester.pump();
-    expect(find.textContaining('준비 중'), findsOneWidget);
+    // ignore: avoid_print
+    print('feedback url configured: ${feedbackFormUrl.isNotEmpty}');
+    expect(feedbackFormUrl.isNotEmpty, isTrue);
     svc.dispose();
   });
 }
