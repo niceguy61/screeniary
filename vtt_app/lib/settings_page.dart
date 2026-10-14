@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'capture_service.dart';
 import 'db.dart';
@@ -9,6 +10,7 @@ import 'llm.dart';
 import 'monitors.dart';
 import 'retention.dart';
 import 'settings.dart';
+import 'update.dart';
 
 /// LLM provider / capture / auto-diary settings.
 class SettingsPage extends StatefulWidget {
@@ -28,6 +30,8 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _pruning = false;
   String _shotsInfo = '계산 중...';
   List<MonitorInfo> _monitors = [];
+  bool _checkingUpdate = false;
+  String _updateMsg = '';
 
   TextEditingController _c(String key) =>
       _controllers.putIfAbsent(key, () => TextEditingController());
@@ -93,6 +97,26 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  Future<void> _openUrl(String url, String failLabel) async {
+    try {
+      final ok = await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      );
+      if (!ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$failLabel 열기 실패')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$failLabel 열기 실패: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _sendFeedback() async {
     if (feedbackFormUrl.isEmpty) {
       if (mounted) {
@@ -103,14 +127,20 @@ class _SettingsPageState extends State<SettingsPage> {
       }
       return;
     }
+    await _openUrl(feedbackFormUrl, '피드백 폼');
+  }
+
+  Future<void> _checkUpdate() async {
+    if (_checkingUpdate) return;
+    setState(() {
+      _checkingUpdate = true;
+      _updateMsg = '';
+    });
     try {
-      await Process.run('explorer.exe', [feedbackFormUrl]);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('브라우저 열기 실패: $e')),
-        );
-      }
+      final res = await checkForUpdate(current: appVersion);
+      if (mounted) setState(() => _updateMsg = res.note);
+    } finally {
+      if (mounted) setState(() => _checkingUpdate = false);
     }
   }
 
@@ -227,7 +257,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Widget _field(String key, String label, {bool obscure = false}) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 8),
       child: TextField(
         controller: _c(key),
         obscureText: obscure,
@@ -296,11 +326,11 @@ class _SettingsPageState extends State<SettingsPage> {
       body: s == null
           ? const Center(child: CircularProgressIndicator())
           : ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               children: [
                 const Text('LLM 제공자',
                     style:
-                        TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   key: ValueKey(s.provider),
@@ -341,10 +371,10 @@ class _SettingsPageState extends State<SettingsPage> {
                     child: Text(_testMsg,
                         style: const TextStyle(fontSize: 12)),
                   ),
-                const Divider(height: 32),
+                const Divider(height: 20),
                 const Text('화면',
                     style:
-                        TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   key: ValueKey('theme-${s.themeMode}'),
@@ -389,10 +419,10 @@ class _SettingsPageState extends State<SettingsPage> {
                   onChanged: (v) => setState(
                       () => s.shotRetentionDays = v ?? 30),
                 ),
-                const Divider(height: 32),
+                const Divider(height: 20),
                 const Text('캡처 화면',
                     style: TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 15)),
+                        fontWeight: FontWeight.bold, fontSize: 13)),
                 const Text(
                     '체크한 화면만 기록. 현재 연결된 화면만 표시되며, '
                     '캡처 중 추가된 화면은 포함되지 않음.',
@@ -414,10 +444,10 @@ class _SettingsPageState extends State<SettingsPage> {
                       onChanged: (v) =>
                           _toggleMonitor(m.device, v ?? false),
                     ),
-                const Divider(height: 32),
+                const Divider(height: 20),
                 const Text('캡처',
                     style:
-                        TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                 Row(
                   children: [
                     Expanded(
@@ -434,10 +464,10 @@ class _SettingsPageState extends State<SettingsPage> {
                     Text('${s.captureIntervalSec}초 간격'),
                   ],
                 ),
-                const Divider(height: 32),
+                const Divider(height: 20),
                 const Text('자동 일기',
                     style:
-                        TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                 const Text('지정 시간이 되면 오늘 일기를 자동 생성 (앱 실행 중에만 동작)',
                     style: TextStyle(fontSize: 12)),
                 SwitchListTile(
@@ -455,10 +485,10 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   ],
                 ),
-                const Divider(height: 32),
+                const Divider(height: 20),
                 const Text('저장 공간',
                     style:
-                        TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                 const SizedBox(height: 8),
                 Text(_shotsInfo,
                     style: const TextStyle(fontSize: 12)),
@@ -468,10 +498,10 @@ class _SettingsPageState extends State<SettingsPage> {
                   child:
                       Text(_pruning ? '정리 중...' : '오래된 캡처 지금 정리'),
                 ),
-                const Divider(height: 32),
+                const Divider(height: 20),
                 const Text('피드백',
                     style: TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 15)),
+                        fontWeight: FontWeight.bold, fontSize: 13)),
                 const Text(
                     '불편한 점·버그·원하는 기능을 보내주세요. '
                     '앱 상단의 버전을 함께 적어주면 원인 파악이 빠릅니다.',
@@ -482,7 +512,37 @@ class _SettingsPageState extends State<SettingsPage> {
                   icon: const Icon(Icons.feedback_outlined, size: 18),
                   label: const Text('피드백 보내기'),
                 ),
-                const SizedBox(height: 24),
+                const Divider(height: 20),
+                const Text('앱 정보',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 8),
+                Text('버전 $appVersion',
+                    style: const TextStyle(fontSize: 12)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    OutlinedButton(
+                      onPressed:
+                          _checkingUpdate ? null : _checkUpdate,
+                      child: Text(
+                          _checkingUpdate ? '확인 중...' : '업데이트 확인'),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton(
+                      onPressed: () => _openUrl(
+                          repoReleasesUrl, '릴리즈 페이지'),
+                      child: const Text('다운로드 페이지'),
+                    ),
+                  ],
+                ),
+                if (_updateMsg.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(_updateMsg,
+                        style: const TextStyle(fontSize: 12)),
+                  ),
+                const SizedBox(height: 16),
               ],
             ),
     );

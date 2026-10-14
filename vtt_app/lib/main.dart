@@ -13,7 +13,6 @@ import 'retention.dart';
 import 'settings.dart';
 import 'settings_page.dart';
 import 'timelapse_dialog.dart';
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await _showWindowSafely();
@@ -497,7 +496,7 @@ class _TimelinePageState extends State<TimelinePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('VTT 0.5.9 · 오늘 타임라인'),
+        title: const Text('VTT $appVersion · 오늘 타임라인'),
         actions: [
           IconButton(
             icon: const Icon(Icons.checklist_outlined),

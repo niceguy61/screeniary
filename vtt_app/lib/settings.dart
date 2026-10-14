@@ -9,6 +9,9 @@ import 'package:path_provider/path_provider.dart';
 const feedbackFormUrl =
     'https://docs.google.com/forms/d/e/1FAIpQLSe0UnqdcpDOEHKyaLU-uBZ-XGuYa3avuJEgJJ9CRfR0NSnp-Q/viewform?usp=header';
 
+/// Single source of truth for the app version (title, settings, update check).
+const appVersion = '0.5.11';
+
 /// Provider ids. 'openrouter' reuses the OpenAI-compatible wire format.
 class Providers {
   static const ollama = 'ollama';
